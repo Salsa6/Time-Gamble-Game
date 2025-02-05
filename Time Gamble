@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Point Incremental Game</title>
+    <style>
+        body {
+            background-color: #121212;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+        }
+        button, input {
+            margin: 10px;
+            padding: 10px;
+            font-size: 16px;
+        }
+        #points {
+            font-size: 48px;
+            font-weight: bold;
+        }
+        .points-label {
+            font-size: 48px;
+        }
+    </style>
+</head>
+<body>
+    <p><span class="points-label">Points:</span> <span id="points">0</span></p>
+    <button id="startButton">Press Once to Start</button>
+    <input type="number" id="betAmount" placeholder="Enter points to bet" min="0" step="0.01">
+    <input type="number" id="multiplier" placeholder="Enter multiplier" min="1" step="0.00000001">
+    <button id="gambleButton">Gamble</button>
+    <p id="result"></p>
+
+    <script>
+        const pointsDisplay = document.getElementById("points");
+        const startButton = document.getElementById("startButton");
+        const betAmountInput = document.getElementById("betAmount");
+        const multiplierInput = document.getElementById("multiplier");
+        const gambleButton = document.getElementById("gambleButton");
+        const resultDisplay = document.getElementById("result");
+
+        let points = parseFloat(localStorage.getItem("points")) || 0;
+        let lastUpdateTime = parseFloat(localStorage.getItem("lastUpdateTime")) || Date.now() / 1000;
+        let gameStarted = localStorage.getItem("gameStarted") === "true";
+
+        function updatePoints() {
+            points += 1;
+            lastUpdateTime = Date.now() / 1000;
+            localStorage.setItem("lastUpdateTime", lastUpdateTime);
+            localStorage.setItem("points", points);
+            pointsDisplay.textContent = points.toFixed(2);
+        }
+
+        function syncPoints() {
+            const now = Date.now() / 1000;
+            if (gameStarted) {
+                const elapsedSeconds = Math.floor(now - lastUpdateTime);
+                points += elapsedSeconds;
+                lastUpdateTime = now;
+                localStorage.setItem("lastUpdateTime", lastUpdateTime);
+                localStorage.setItem("points", points);
+                pointsDisplay.textContent = points.toFixed(2);
+            }
+        }
+
+        if (gameStarted) {
+            syncPoints();
+            startButton.style.display = "none";
+            setInterval(updatePoints, 1000);
+        }
+
+        startButton.addEventListener("click", () => {
+            if (!gameStarted) {
+                gameStarted = true;
+                lastUpdateTime = Date.now() / 1000;
+                localStorage.setItem("gameStarted", "true");
+                localStorage.setItem("lastUpdateTime", lastUpdateTime);
+                startButton.style.display = "none";
+                setInterval(updatePoints, 1000);
+            }
+        });
+
+        gambleButton.addEventListener("click", () => {
+            syncPoints();
+            let bet = parseFloat(betAmountInput.value);
+            let multiplier = parseFloat(multiplierInput.value);
+
+            if (isNaN(bet) || isNaN(multiplier) || bet <= 0 || multiplier < 1 || bet > points) {
+                resultDisplay.textContent = "Invalid input.";
+                return;
+            }
+
+            bet = parseFloat(bet.toFixed(2));
+            multiplier = parseFloat(multiplier.toFixed(8));
+
+            if (Math.random() + Number.EPSILON < (1 / multiplier)) {
+                points += bet * (multiplier - 1);
+                resultDisplay.textContent = `You won! Your bet was multiplied by ${multiplier}.`;
+            } else {
+                points -= bet;
+                resultDisplay.textContent = "You lost the bet.";
+            }
+
+            localStorage.setItem("points", points);
+            pointsDisplay.textContent = points.toFixed(2);
+        });
+    </script>
+</body>
+</html>
